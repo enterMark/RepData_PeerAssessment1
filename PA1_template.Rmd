@@ -1,25 +1,132 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "PA1_Reproducible_Research"
+author: "Mark"
+date: "2023-03-28"
+output: html_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
-## Loading and preprocessing the data
+## Step 1 - Code for reading in the dataset and/or processing the data
+
+```{r activit, echo=TRUE}
+library(readr)
+activity <- read.csv("activity.csv")
+head(activity)
+tail(activity)
+str(activity)
+summary(activity)
+```
+
+## Step 2 - Histogram of the total number of steps taken each day
+```{r plot, echo=TRUE}
+library(dplyr)
+library(ggplot2)
+daily_sum <- activity %>% group_by(date) %>% summarise(total_steps = sum(steps), na.rm = TRUE)
+ggplot(data = daily_sum, aes(x = total_steps)) +
+  geom_histogram(binwidth = 1000, fill = "cornflowerblue", color = "white") +
+  labs(x = "Total Steps per Day", y = "Frequency", title = "Histogram of Total Steps per Day")
+
+```
+## Step 3 - Mean and median number of steps taken each day
+```{r mean, echo=TRUE}
+activity %>% group_by(date) %>% summarise(mean_steps = mean(steps, na.rm = TRUE), median_steps = median(steps, na.rm = TRUE))
+
+```
+## Step 4 -  Time series plot of the average number of steps taken
+```{r time_series plot, echo=TRUE}
+mean_steps <- activity %>% group_by(date) %>% summarise(mean_steps = mean(steps, na.rm = TRUE))
+ggplot(mean_steps, aes(x = date, y = mean_steps))+
+    geom_bar(stat = "identity", fill = "blue") +
+    labs(x = "Date", y = "Mean_Steps", title = "Time Series Mean Steps")
+
+```
+## Step 5 - The 5-minute interval that, on average, contains the maximum number of steps
+- transform column interval to character type
+- calculate the mean steps for each interval
+- sort the steps in descending for interval
+- select the first row in the data set as the maximum
+
+```{r max interval}
+activity$interval <- as.character(activity$interval)
+mean_interval_steps <- activity %>% group_by(interval) %>% summarise(mean_steps = mean(steps, na.rm = TRUE))
+sorted_data <- mean_interval_steps %>% arrange(desc(mean_steps))
+sorted_data %>% slice(1)
+
+```
+## Step 6 -  Code to describe and show a strategy for imputing missing data
+using sum to understand the number of NA in the column steps, mean() to get the % of NA
+calculate the mean value by group of interval and acquire a new data set 
+merge the activity data set with the merged_activity one by the column of interval 
+replace the NA by the mean value for respective interval group
+remove the mean_steps column 
+transform the numeric type to integer for easier understanding
+```{r}
+sum(is.na(activity$steps))
+mean(is.na(activity$steps))
+activity$date <- as.character(activity$date)
+act_mean <- activity %>% group_by(interval) %>% summarise(step_mean = mean(steps, na.rm = TRUE))
+merged_activity <- merge(activity, act_mean, by = "interval")
+merged_activity$steps[is.na(merged_activity$steps)] <- merged_activity$step_mean[is.na(merged_activity$steps)]
+merged_activity$step_mean <- NULL
+merged_activity$steps <- as.integer(merged_activity$steps)
+summary(merged_activity)
+
+```
+## Step 7 - Histogram of the total number of steps taken each day after missing values are imputed
+after removing the missing value, the distribution of today steps by date is a bit different 
+the mean value is a higher than the original one
+```{r imputed_NA_hist, echo=TRUE}
+daily_sum_2 <- merged_activity %>% group_by(date) %>% summarise(total_steps = sum(steps), na.rm = TRUE)
+ggplot(data = daily_sum_2, aes(x = total_steps)) +
+  geom_histogram(binwidth = 1000, fill = "cornflowerblue", color = "white") +
+  labs(x = "Total Steps per Day", y = "Frequency", title = "Histogram of Total Steps per Day")
+
+```
+## Step 8 - Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+```{r weekday_weekend, echo=TRUE}
+merged_activity$date <- as.Date(merged_activity$date)
+merged_activity$day_type <- ifelse(weekdays(merged_activity$date) %in% c("Saturday", "Sunday"), "weekend", "weekday")
+merged_activity$day_type <- factor(merged_activity$day_type, levels = c("weekday", "weekend"))
+steps_day_type <-  aggregate(steps ~ interval + day_type, merged_activity, mean)
+steps_day_type$interval <- as.integer(steps_day_type$interval)
+ggplot(steps_day_type, aes(interval, steps, color = day_type)) + 
+  geom_line() + ggtitle("Mean Daily Steps per Day Type") + 
+  xlab("Interval") + 
+  ylab("Number of Steps") +
+  facet_wrap(.~day_type, ncol=1,nrow=2) 
+
+```
 
 
 
-## What is mean total number of steps taken per day?
 
 
 
-## What is the average daily activity pattern?
 
 
 
-## Imputing missing values
 
 
 
-## Are there differences in activity patterns between weekdays and weekends?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
